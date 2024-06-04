@@ -48,6 +48,14 @@ class VllmRbProperties(Properties):
     device: Optional[str] = None
     preloaded_model: Optional[Any] = None
 
+    # Vision-language models
+    image_input_type: Optional[str] = None
+    image_token_id: Optional[int] = None
+    image_input_shape: Optional[str] = None
+    image_feature_size: Optional[int] = None
+    scheduler_delay_factor: float = 0.0
+    enable_chunked_prefill: bool = False
+
     @field_validator('engine')
     def validate_engine(cls, engine):
         if engine != "Python":

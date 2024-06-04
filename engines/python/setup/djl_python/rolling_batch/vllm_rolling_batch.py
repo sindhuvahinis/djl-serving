@@ -13,7 +13,8 @@
 import logging
 from collections import OrderedDict, defaultdict
 
-from vllm import EngineArgs, LLMEngine, SamplingParams
+import torch
+from vllm import LLMEngine, SamplingParams
 from vllm.utils import random_uuid
 from vllm.lora.request import LoRARequest
 from djl_python.rolling_batch.rolling_batch import RollingBatch, stop_on_any_exception, filter_unused_generation_params
@@ -114,11 +115,20 @@ class VLLMRollingBatch(RollingBatch):
         # step 0: register new requests to engine
         for request in new_requests:
             request_id = random_uuid()
+            image_data = None
+            if request.parameters.get("image_path"):
+                image_path = request.parameters["image_path"]
+                image_data = torch.load(image_path).to(torch.float16)
+                image_data = image_data.unsqueeze(0)
+                from vllm.sequence import MultiModalData
+                multi_modal_data = MultiModalData(type=MultiModalData.Type.IMAGE, data=image_data)
+
+
             params = self.translate_vllm_params(request.parameters)
             sampling_params = SamplingParams(**params)
             request_params = get_lora_request_params(request, self.lora_ids)
             self.engine.add_request(request_id, request.input_text,
-                                    sampling_params, **request_params)
+                                    sampling_params, **request_params, mult)
             self.request_cache[request_id] = {
                 "curr_length": 0,
                 "text": "",

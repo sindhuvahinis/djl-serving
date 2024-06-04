@@ -162,4 +162,10 @@ def get_engine_args_from_config(config: VllmRbProperties) -> EngineArgs:
             max_lora_rank=config.max_lora_rank,
             lora_extra_vocab_size=config.lora_extra_vocab_size,
             max_cpu_loras=config.max_cpu_loras,
-            revision=config.revision)
+            revision=config.revision,
+            image_input_type=config.image_input_type,
+            image_token_id=config.image_token_id,
+            image_input_shape=config.image_input_shape,
+            image_feature_size=config.image_feature_size,
+            scheduler_delay_factor=config.scheduler_delay_factor,
+            enable_chunked_prefill=config.enable_chunked_prefill)

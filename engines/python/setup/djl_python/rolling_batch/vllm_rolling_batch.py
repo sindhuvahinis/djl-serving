@@ -99,12 +99,13 @@ class VLLMRollingBatch(RollingBatch):
         from PIL import Image
         from transformers import AutoProcessor
         multi_modal_data = None
-        if request.parameters.get("image_path"):
-            image_path = request.parameters["image_path"]
-            image = Image.open(image_path)
+        image_path = request.parameters.pop("image_path", None)
+        if image_path:
+            image = Image.open(image_path).convert("RGB")
             processor = AutoProcessor.from_pretrained(self.vllm_configs.model_id_or_path)
-            image_dict = processor(images=image, return_tensors="pt")
-            image_data = image_dict["pixel_values"].to(torch.float16) # (1, 3, 336, 336)
+            prompt_str = "  "
+            image_dict = processor(prompt_str, images=image, return_tensors="pt")
+            image_data = image_dict["pixel_values"].to(0, torch.float16) #(1, 3, 336, 336)
             image_data = image_data[0].unsqueeze(0)
 
             from vllm.sequence import MultiModalData
@@ -133,10 +134,10 @@ class VLLMRollingBatch(RollingBatch):
         # step 0: register new requests to engine
         for request in new_requests:
             request_id = random_uuid()
+            multi_modal_params = self.preprocess_image(request)
             params = self.translate_vllm_params(request.parameters)
             sampling_params = SamplingParams(**params)
             request_params = get_lora_request_params(request, self.lora_ids)
-            multi_modal_params = self.preprocess_image(request)
             self.engine.add_request(request_id, request.input_text,
                                     sampling_params, **request_params,
                                     **multi_modal_params)

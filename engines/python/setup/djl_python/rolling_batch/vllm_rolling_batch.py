@@ -17,6 +17,8 @@ import torch
 from vllm import LLMEngine, SamplingParams
 from vllm.utils import random_uuid
 from vllm.lora.request import LoRARequest
+
+from djl_python.request import Request
 from djl_python.rolling_batch.rolling_batch import RollingBatch, stop_on_any_exception, filter_unused_generation_params
 from djl_python.request_io import Token
 from djl_python.rolling_batch.rolling_batch_vllm_utils import (
@@ -93,6 +95,22 @@ class VLLMRollingBatch(RollingBatch):
                                                      remove_unused_params=True)
         return parameters
 
+    def preprocess_image(self, request: Request) -> dict:
+        from PIL import Image
+        from transformers import AutoProcessor
+        multi_modal_data = None
+        if request.parameters.get("image_path"):
+            image_path = request.parameters["image_path"]
+            image = Image.open(image_path)
+            processor = AutoProcessor.from_pretrained(self.vllm_configs.model_id_or_path)
+            image_dict = processor(images=image, return_tensors="pt")
+            image_data = image_dict["pixel_values"].to(torch.float16) # (1, 3, 336, 336)
+            image_data = image_data[0].unsqueeze(0)
+
+            from vllm.sequence import MultiModalData
+            multi_modal_data = MultiModalData(type=MultiModalData.Type.IMAGE, data=image_data)
+        return {"multi_modal_data": multi_modal_data}
+
     @stop_on_any_exception
     def inference(self,
                   input_data: list[str],
@@ -115,20 +133,13 @@ class VLLMRollingBatch(RollingBatch):
         # step 0: register new requests to engine
         for request in new_requests:
             request_id = random_uuid()
-            image_data = None
-            if request.parameters.get("image_path"):
-                image_path = request.parameters["image_path"]
-                image_data = torch.load(image_path).to(torch.float16)
-                image_data = image_data.unsqueeze(0)
-                from vllm.sequence import MultiModalData
-                multi_modal_data = MultiModalData(type=MultiModalData.Type.IMAGE, data=image_data)
-
-
             params = self.translate_vllm_params(request.parameters)
             sampling_params = SamplingParams(**params)
             request_params = get_lora_request_params(request, self.lora_ids)
+            multi_modal_params = self.preprocess_image(request)
             self.engine.add_request(request_id, request.input_text,
-                                    sampling_params, **request_params, mult)
+                                    sampling_params, **request_params,
+                                    **multi_modal_params)
             self.request_cache[request_id] = {
                 "curr_length": 0,
                 "text": "",

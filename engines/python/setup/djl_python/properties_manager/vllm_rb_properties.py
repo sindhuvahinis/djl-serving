@@ -58,6 +58,7 @@ class VllmRbProperties(Properties):
     cpu_offload_gb_per_gpu: Optional[int] = 0
     enable_prefix_caching: Optional[bool] = False
     disable_sliding_window: Optional[bool] = False
+<<<<<<< HEAD
     limit_mm_per_prompt: Optional[Mapping[str, int]] = None
     use_v2_block_manager: bool = False
 
@@ -75,6 +76,7 @@ class VllmRbProperties(Properties):
     typical_acceptance_sampler_posterior_alpha: Optional[float] = None
     qlora_adapter_name_or_path: Optional[str] = None
     disable_logprobs_during_spec_decoding: Optional[bool] = None
+    use_nxd: bool = False
 
     @field_validator('engine')
     def validate_engine(cls, engine):

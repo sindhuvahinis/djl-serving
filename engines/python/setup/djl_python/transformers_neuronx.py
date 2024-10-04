@@ -315,6 +315,7 @@ class TransformersNeuronXService(object):
         Returns:
             None
         """
+        logging.info(f"SINDHU:Loading model using spec dec")
         from vllm.model_executor.models.neuron.llama import load_weights_spec
         self.model = load_weights_spec(model_name_or_path=self.config.model_id_or_path,
                                        load_format="auto",

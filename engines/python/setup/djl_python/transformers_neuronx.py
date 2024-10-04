@@ -315,15 +315,20 @@ class TransformersNeuronXService(object):
         Returns:
             None
         """
-        if self.config.rolling_batch == "vllm" and self.config.model_loader == "vllm":
-            """Model loading is being deferred to vLLMs model loader"""
-            return
-        elif self.config.model_loader == "nxd":
-            self.model = self.model_loader.load_model()
-        elif self.config.rolling_batch == "vllm":
-            self.model = self.model_loader.load_unwrapped_model()
-        else:
-            self.model = self.model_loader.load_model()
+        from vllm.model_executor.models.neuron.llama import load_weights_spec
+        self.model = load_weights_spec(model_name_or_path=self.config.model_id_or_path,
+                                       load_format="auto",
+                                       draft_model_name_or_path=self.config.speculative_draft_model,
+                                       speculative_length=self.config.speculative_length)
+        # if self.config.rolling_batch == "vllm" and self.config.model_loader == "vllm":
+        #     """Model loading is being deferred to vLLMs model loader"""
+        #     return
+        # elif self.config.model_loader == "nxd":
+        #     self.model = self.model_loader.load_model()
+        # elif self.config.rolling_batch == "vllm":
+        #     self.model = self.model_loader.load_unwrapped_model()
+        # else:
+        #     self.model = self.model_loader.load_model()
 
     def initialize_draft_model(self, properties: dict) -> None:
         """
@@ -369,10 +374,10 @@ class TransformersNeuronXService(object):
         Returns:
             None
         """
-        self.pre_model_load(properties)
+        # self.pre_model_load(properties)
         self.set_configs(properties)
         self.set_tokenizer()
-        self.set_model_loader()
+        # self.set_model_loader()
         self.load_model()
         self.set_rolling_batch(properties)
         self.input_format_args = self.get_input_format_args()

@@ -299,7 +299,7 @@ class TransformersNeuronXService(object):
             logging.info(
                 f"Loading target model {properties.get('model_id')} ...")
 
-    def load_model(self) -> None:
+    def load_model(self, os=None) -> None:
         """
         Load the model based on the rolling batch and model loader configuration.
 
@@ -315,6 +315,21 @@ class TransformersNeuronXService(object):
         Returns:
             None
         """
+
+        logging.info(f"SINDHU Setting env")
+        if os.getenv("NEURON_CC_PIPELINE_FACTOR") is not None:
+            try:
+                neuron_cc_pipeline_factor = int(os.getenv("NEURON_CC_PIPELINE_FACTOR"))
+                page_size = int(os.getenv("NEURON_CC_PAGE_SIZE", 2048))
+                os.environ["NEURON_SCRATCHPAD_PAGE_SIZE"] = str(page_size)
+                os.environ["NEURON_RT_DBG_EMBEDDING_UPDATE_BOUND_CHECK"] = "0"
+                os.environ["NEURON_RT_DBG_INDIRECT_MEMCPY_BOUND_CHECK"] = "0"
+                os.environ[
+                    "NEURON_CC_FLAGS"] = f"--internal-backend-options=--enable-indirect-memcpy-bound-check=false --tensorizer-options='--enable-ccop-compute-overlap --cc-pipeline-tiling-factor={neuron_cc_pipeline_factor}'  --hbm-scratchpad-page-size={page_size} --internal-repeat-load-thres=2"
+                logging.info(f"Enabling CC Pipelining with {os.getenv('NEURON_CC_FLAGS')} and page size {page_size}")
+            except ValueError as e:
+                logging.info(f"Failed to parse cc pipeline factor/page size: {e}")
+
         logging.info(f"SINDHU:Loading model using spec dec")
         from vllm.model_executor.models.neuron.llama import load_weights_spec
         self.model = load_weights_spec(model_name_or_path=self.config.model_id_or_path,

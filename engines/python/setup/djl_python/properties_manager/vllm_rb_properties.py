@@ -58,7 +58,6 @@ class VllmRbProperties(Properties):
     cpu_offload_gb_per_gpu: Optional[int] = 0
     enable_prefix_caching: Optional[bool] = False
     disable_sliding_window: Optional[bool] = False
-<<<<<<< HEAD
     limit_mm_per_prompt: Optional[Mapping[str, int]] = None
     use_v2_block_manager: bool = False
 

@@ -11,6 +11,7 @@
 # BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied. See the License for
 # the specific language governing permissions and limitations under the License.
 
+import os
 import copy
 import logging
 from transformers import AutoConfig, AutoTokenizer
@@ -299,7 +300,7 @@ class TransformersNeuronXService(object):
             logging.info(
                 f"Loading target model {properties.get('model_id')} ...")
 
-    def load_model(self, os=None) -> None:
+    def load_model(self) -> None:
         """
         Load the model based on the rolling batch and model loader configuration.
 

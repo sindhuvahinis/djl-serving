@@ -332,11 +332,13 @@ class TransformersNeuronXService(object):
                 logging.info(f"Failed to parse cc pipeline factor/page size: {e}")
 
         logging.info(f"SINDHU:Loading model using spec dec")
-        from vllm.model_executor.models.neuron.llama import load_weights_spec
-        self.model = load_weights_spec(model_name_or_path=self.config.model_id_or_path,
-                                       load_format="auto",
-                                       draft_model_name_or_path=self.config.speculative_draft_model,
-                                       speculative_length=self.config.speculative_length)
+        from vllm.model_executor.model_loader.neuron import get_neuron_sd_model
+        self.model = get_neuron_sd_model(model_name=self.config.model_id_or_path,
+                                         tensor_parallel_degree=self.config.tensor_parallel_degree,
+                                         speculative_draft_model=self.config.speculative_draft_model,
+                                         num_speculative_tokens=self.config.speculative_length,
+                                         max_num_seqs=self.config.batch_size,
+                                         max_model_len=self.config.n_positions)
         # if self.config.rolling_batch == "vllm" and self.config.model_loader == "vllm":
         #     """Model loading is being deferred to vLLMs model loader"""
         #     return

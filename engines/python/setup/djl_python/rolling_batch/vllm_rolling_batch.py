@@ -22,6 +22,7 @@ from djl_python.rolling_batch.rolling_batch_vllm_utils import (
     get_engine_args_from_config, get_prompt_inputs)
 from djl_python.properties_manager.vllm_rb_properties import VllmRbProperties
 from typing import List
+import logging
 
 VLLM_GENERATION_PARAMS = set(SamplingParams().__dict__.keys())
 
@@ -115,10 +116,15 @@ class VLLMRollingBatch(RollingBatch):
         :return results: List of dictionaries, one for each request, that contain output tokens and other data.
         """
         self.add_new_requests(new_requests)
+        vllm_output_logger = False
         # step 0: register new requests to engine
         for request in new_requests:
             request_id = random_uuid()
             prompt_inputs = get_prompt_inputs(request)
+            logging.info(f"Intuit debugging log: Parsed request input: {request.request_input.input_text}"
+                         f"parameters: {request.request_input.parameters}")
+            if request.parameters.pop("vllm_output_logger"):
+                vllm_output_logger = True
             params = self.translate_vllm_params(request.parameters)
             sampling_params = SamplingParams(**params)
             request_params = get_lora_request_params(request, self.lora_ids)
@@ -130,6 +136,8 @@ class VLLMRollingBatch(RollingBatch):
                 "request_output": request.request_output
             }
         request_outputs = self.engine.step()
+        if vllm_output_logger:
+            logging.info(f"Intuit debugging log: Vllm request output: {request_outputs}")
 
         # step 1: put result to cache and request_output
         for request_output in request_outputs:
@@ -138,6 +146,8 @@ class VLLMRollingBatch(RollingBatch):
 
         for request in self.active_requests:
             request_output = request.request_output
+            if vllm_output_logger:
+                logging.info(f"Intuit debugging log: Vllm parsed djl output: {request_output}")
             if request_output.finished:
                 request.last_token = True
 

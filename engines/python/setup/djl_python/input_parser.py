@@ -129,6 +129,7 @@ def parse_text_inputs_params(request_input: TextInput, input_item: Input,
     tokenizer = kwargs.get("tokenizer")
     image_token = kwargs.get("image_placeholder_token")
     configs = kwargs.get("configs")
+    logging.info(f"Intuit debugging log: Unparsed input: {input_map}")
     is_bedrock = False
     if configs is not None:
         is_bedrock = configs.bedrock_compat

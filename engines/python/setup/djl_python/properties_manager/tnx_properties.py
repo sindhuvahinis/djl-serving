@@ -83,6 +83,10 @@ TNX_SUPPORTED_ROLLING_BATCH_TYPES = [
 ]
 
 
+def get_env_or_default(key: str, default: Any = None) -> Any:
+    return os.environ.get(key, default)
+
+
 class TransformerNeuronXProperties(Properties):
     """Transformer neuronx related configurations"""
     neuron_optimize_level: Optional[OptimizeLevel] = None
@@ -94,7 +98,8 @@ class TransformerNeuronXProperties(Properties):
     load_in_8bit: Optional[bool] = None
     low_cpu_mem_usage: bool = False
     load_split_model: Optional[bool] = None
-    context_length_estimate: Optional[List[int]] = None
+    context_length_estimate: Optional[List[int]] = Field(
+        default_factory=lambda: get_env_or_default("NEURON_CONTEXT_LENGTH_ESTIMATE"))
     amp: Optional[str] = None
     quantize: Optional[TnXQuantizeMethods] = None
     compiled_graph_path: Optional[str] = None
@@ -117,6 +122,21 @@ class TransformerNeuronXProperties(Properties):
     on_device_embedding_config: Optional[Any] = Field(default_factory=dict)
     max_model_len: Optional[int] = None
 
+    # neuron vllm related configs
+    neuron_on_dev_generation: Optional[bool] = Field(
+        default_factory=lambda: get_env_or_default("NEURON_ON_DEV_GENERATION", False))
+    neuron_on_device_embedding: Optional[bool] = Field(
+        default_factory=lambda: get_env_or_default("NEURON_ON_DEVICE_EMBEDDING", False))
+    neuron_shard_over_sequence: Optional[bool] = Field(
+        default_factory=lambda: get_env_or_default("NEURON_SHARD_OVER_SEQUENCE", False))
+    neuron_compilation_worker_count: Optional[int] = Field(
+        default_factory=lambda: get_env_or_default("NEURON_COMPILATION_WORKER_COUNT"))
+    neuron_sequence_parallel: Optional[bool] = Field(
+        default_factory=lambda: get_env_or_default("NEURON_SEQUENCE_PARALLEL", True))
+    neuron_quant: Optional[bool] = Field(default_factory=lambda: get_env_or_default("NEURON_QUANT", False))
+    neuron_cc_pipeline_factor: Optional[int] = Field(
+        default_factory=lambda: get_env_or_default("NEURON_CC_PIPELINE_FACTOR"))
+
     @field_validator('neuron_optimize_level')
     def set_neuron_optimal_env(cls, level):
         if "NEURON_CC_FLAGS" not in os.environ:
@@ -129,14 +149,14 @@ class TransformerNeuronXProperties(Properties):
         if "NEURON_CC_FLAGS" not in os.environ:
             os.environ["NEURON_CC_FLAGS"] = ""
         os.environ["NEURON_CC_FLAGS"] = os.environ[
-            "NEURON_CC_FLAGS"] + f" --enable-mixed-precision-accumulation"
+                                            "NEURON_CC_FLAGS"] + f" --enable-mixed-precision-accumulation"
 
     @field_validator('enable_saturate_infinity')
     def set_saturate_infinity(cls, enablement):
         if "NEURON_CC_FLAGS" not in os.environ:
             os.environ["NEURON_CC_FLAGS"] = ""
         os.environ["NEURON_CC_FLAGS"] = os.environ[
-            "NEURON_CC_FLAGS"] + f" --enable-saturate-infinity"
+                                            "NEURON_CC_FLAGS"] + f" --enable-saturate-infinity"
 
     @field_validator('context_length_estimate', mode='before')
     def parse_context_length(cls, context_length_estimate):

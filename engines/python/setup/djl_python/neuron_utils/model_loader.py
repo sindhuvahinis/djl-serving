@@ -861,16 +861,26 @@ class TNXVllmModelLoader(ModelLoader):
             fuse_mlp=fuse_mlp,
             mlp_out_weight_transpose=mlp_out_weight_transpose,
         )
+        logging.info(f'Neuron config: {neuron_config}')
         return neuron_config
 
     def load_model(self, **kwargs):
         from vllm.model_executor.model_loader.neuron import get_neuron_sd_model
+        if self.config.context_length_estimate is None:
+            self.config.context_length_estimate = [128, 256, 384, 512, 640, 768, 1024, 1280, 1536, 2048, 3072,
+                                                   4096, 6144, 8192, 12288, 16384, 32768]
         self.model = get_neuron_sd_model(model_name=self.config.model_id_or_path,
                                          tensor_parallel_degree=self.config.tensor_parallel_degree,
+                                         model_config=self.config,
+                                         neuron_config=self.neuron_config,
                                          speculative_draft_model=self.config.speculative_draft_model,
                                          num_speculative_tokens=self.config.speculative_length,
                                          max_num_seqs=self.config.batch_size,
-                                         max_model_len=self.config.n_positions)
+                                         max_model_len=self.config.n_positions,
+                                         predefined_buckets=self.config.context_length_estimate,
+                                         dtype=self.config.amp,
+                                         neuron_cc_pipeline_factor=self.config.neuron_cc_pipeline_factor)
+        return self.model
 
     def partition(self, save_path, **kwargs):
         pass

@@ -19,10 +19,6 @@ from pydantic import field_validator, model_validator, Field
 from djl_python.properties_manager.properties import Properties
 
 
-def get_env_or_default(key: str, default: Any = None) -> Any:
-    return os.environ.get(key, default)
-
-
 class VllmQuantizeMethods(str, Enum):
     awq = 'awq'
     deepspeedfp = 'deepspeedfp'
@@ -82,25 +78,6 @@ class VllmRbProperties(Properties):
     disable_logprobs_during_spec_decoding: Optional[bool] = None
     use_nxd: bool = False
 
-    # neuron vllm related configs
-    neuron_on_dev_generation: Optional[bool] = Field(
-        default_factory=lambda: get_env_or_default("NEURON_ON_DEV_GENERATION", False))
-    neuron_on_device_embedding: Optional[bool] = Field(
-        default_factory=lambda: get_env_or_default("NEURON_ON_DEVICE_EMBEDDING", False))
-    neuron_shard_over_sequence: Optional[bool] = Field(
-        default_factory=lambda: get_env_or_default("NEURON_SHARD_OVER_SEQUENCE", False))
-    neuron_compilation_worker_count: Optional[int] = Field(
-        default_factory=lambda: get_env_or_default("NEURON_COMPILATION_WORKER_COUNT"))
-    neuron_sequence_parallel: Optional[bool] = Field(
-        default_factory=lambda: get_env_or_default("NEURON_SEQUENCE_PARALLEL", True))
-    neuron_quant: Optional[bool] = Field(default_factory=lambda: get_env_or_default("NEURON_QUANT", False))
-    neuron_context_length_estimate: Optional[List[int]] = Field(
-        default_factory=lambda: get_env_or_default("NEURON_CONTEXT_LENGTH_ESTIMATE",
-                                                   [128, 256, 384, 512, 640, 768, 1024, 1280, 1536, 2048, 3072,
-                                                    4096, 6144, 8192, 12288, 16384, 32768]))
-    neuron_cc_pipeline_factor: Optional[int] = Field(
-        default_factory=lambda: get_env_or_default("NEURON_CC_PIPELINE_FACTOR"))
-
 
     @field_validator('engine')
     def validate_engine(cls, engine):
@@ -138,7 +115,7 @@ class VllmRbProperties(Properties):
             )
         return self
 
-    @field_validator('neuron_context_length_estimatevi ', mode='before')
+    @field_validator('neuron_context_length_estimate', mode='before')
     def parse_context_length(cls, neuron_context_length_estimate):
         return [
             int(context_length)

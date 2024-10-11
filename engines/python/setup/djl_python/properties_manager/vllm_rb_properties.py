@@ -138,9 +138,9 @@ class VllmRbProperties(Properties):
             )
         return self
 
-    @field_validator('context_length_estimate', mode='before')
-    def parse_context_length(cls, context_length_estimate):
+    @field_validator('neuron_context_length_estimatevi ', mode='before')
+    def parse_context_length(cls, neuron_context_length_estimate):
         return [
             int(context_length)
-            for context_length in context_length_estimate.split(',')
+            for context_length in neuron_context_length_estimate.split(',')
         ]

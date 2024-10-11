@@ -118,8 +118,8 @@ class TransformersNeuronXService(object):
             None
         """
         if self.config.model_loader == "tnx":
-            if self.config.speculative_model:
-                self._model_loader_class = TNXVllmModelLoader()
+            if self.config.speculative_draft_model:
+                self._model_loader_class = TNXVllmModelLoader
                 logging.info("Loading model using TNXVllmModelLoader for speculative decoding...")
             else:
                 self._model_loader_class = TNXModelLoader
@@ -320,7 +320,7 @@ class TransformersNeuronXService(object):
             None
         """
         if self.config.rolling_batch == "vllm" and self.config.model_loader == "vllm":
-            if self.config.speculative_model:
+            if self.config.speculative_draft_model:
                 self.model = self.model_loader.load_model()
             """Model loading is being deferred to vLLMs model loader"""
             return

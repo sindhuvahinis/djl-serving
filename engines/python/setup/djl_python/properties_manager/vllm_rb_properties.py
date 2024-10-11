@@ -114,10 +114,3 @@ class VllmRbProperties(Properties):
                 "Speculative decoding requires usage of the V2 block manager. Enable it with option.use_v2_block_manager=true."
             )
         return self
-
-    @field_validator('neuron_context_length_estimate', mode='before')
-    def parse_context_length(cls, neuron_context_length_estimate):
-        return [
-            int(context_length)
-            for context_length in neuron_context_length_estimate.split(',')
-        ]

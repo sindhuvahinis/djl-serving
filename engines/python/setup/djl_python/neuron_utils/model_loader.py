@@ -838,7 +838,7 @@ class TNXVllmModelLoader(ModelLoader):
             fuse_mlp = True
             mlp_out_weight_transpose = True
 
-        if self.config.speculative_model:
+        if self.config.speculative_draft_model:
             weight_tiling = False
             qkv_tiling = False
             fuse_mlp = False

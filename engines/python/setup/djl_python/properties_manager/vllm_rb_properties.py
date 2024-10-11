@@ -10,12 +10,17 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS"
 # BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied. See the License for
 # the specific language governing permissions and limitations under the License.
+import os
 from enum import Enum
-from typing import Optional, Any, Mapping
+from typing import Optional, Any, Mapping, List
 
-from pydantic import field_validator, model_validator
+from pydantic import field_validator, model_validator, Field
 
 from djl_python.properties_manager.properties import Properties
+
+
+def get_env_or_default(key: str, default: Any = None) -> Any:
+    return os.environ.get(key, default)
 
 
 class VllmQuantizeMethods(str, Enum):
@@ -77,6 +82,26 @@ class VllmRbProperties(Properties):
     disable_logprobs_during_spec_decoding: Optional[bool] = None
     use_nxd: bool = False
 
+    # neuron vllm related configs
+    neuron_on_dev_generation: Optional[bool] = Field(
+        default_factory=lambda: get_env_or_default("NEURON_ON_DEV_GENERATION", False))
+    neuron_on_device_embedding: Optional[bool] = Field(
+        default_factory=lambda: get_env_or_default("NEURON_ON_DEVICE_EMBEDDING", False))
+    neuron_shard_over_sequence: Optional[bool] = Field(
+        default_factory=lambda: get_env_or_default("NEURON_SHARD_OVER_SEQUENCE", False))
+    neuron_compilation_worker_count: Optional[int] = Field(
+        default_factory=lambda: get_env_or_default("NEURON_COMPILATION_WORKER_COUNT"))
+    neuron_sequence_parallel: Optional[bool] = Field(
+        default_factory=lambda: get_env_or_default("NEURON_SEQUENCE_PARALLEL", True))
+    neuron_quant: Optional[bool] = Field(default_factory=lambda: get_env_or_default("NEURON_QUANT", False))
+    neuron_context_length_estimate: Optional[List[int]] = Field(
+        default_factory=lambda: get_env_or_default("NEURON_CONTEXT_LENGTH_ESTIMATE",
+                                                   [128, 256, 384, 512, 640, 768, 1024, 1280, 1536, 2048, 3072,
+                                                    4096, 6144, 8192, 12288, 16384, 32768]))
+    neuron_cc_pipeline_factor: Optional[int] = Field(
+        default_factory=lambda: get_env_or_default("NEURON_CC_PIPELINE_FACTOR"))
+
+
     @field_validator('engine')
     def validate_engine(cls, engine):
         if engine != "Python":
@@ -112,3 +137,10 @@ class VllmRbProperties(Properties):
                 "Speculative decoding requires usage of the V2 block manager. Enable it with option.use_v2_block_manager=true."
             )
         return self
+
+    @field_validator('context_length_estimate', mode='before')
+    def parse_context_length(cls, context_length_estimate):
+        return [
+            int(context_length)
+            for context_length in context_length_estimate.split(',')
+        ]

@@ -10,7 +10,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS"
 # BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied. See the License for
 # the specific language governing permissions and limitations under the License.
-
+import copy
 import os
 import time
 import json
@@ -190,6 +190,7 @@ class TNXModelLoader(ModelLoader):
             neuron_config[
                 "collectives_layout"] = self.config.collectives_layout
         if self.config.attention_layout:
+            # TODO: Sindhu tnx: This should be BSH
             neuron_config["attention_layout"] = self.config.attention_layout
         if self.config.cache_layout:
             neuron_config["cache_layout"] = self.config.cache_layout
@@ -199,6 +200,7 @@ class TNXModelLoader(ModelLoader):
             neuron_config["cast_logits_dtype"] = self.config.cast_logits_dtype
         if self.config.on_device_embedding_config:
             if len(self.config.on_device_embedding_config.keys()) > 0:
+                # TODO: Sindhu tnx: On device embedding is true or false
                 neuron_config["on_device_embedding"] = NeuronGenerationConfig(
                     **self.config.on_device_embedding_config)
         self.neuron_config = NeuronConfig(**neuron_config)
@@ -782,50 +784,93 @@ class OptimumStableDiffusionLoader(ModelLoader):
         return self.pipeline
 
 
-class NxDModelLoader(ModelLoader):
+class TNXVllmModelLoader(ModelLoader):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.model = None
-        self.generation_config = get_generation_config(
-            model_id_or_path=self.config.model_id_or_path,
-            load_path=self.config.model_id_or_path
-        )
-        self.compiled_graph_path = None
+        self.generation_config = self.generate_generation_config()
+        self.model_config.generation_config = self.generation_config
+        self.neuron_config = self.generate_neuron_config()
 
-        # self.model_loader = InferenceRunner(
-        #     model_path=self.config.model_id_or_path,
-        #     tokenizer=kwargs.get("tokenizer"),
-        #     generation_config=self.generation_config,
-        # )
+    def generate_generation_config(self):
+        generation_config = GenerationConfig(
+            max_length=self.config.max_model_len,
+            per_batch_line=True,
+            top_k=[1] * self.config.batch_size,
+            top_p=[1] * self.config.batch_size,
+            top_p_min_tokens=[1] * self.config.batch_size,
+            temperature=[1] * self.config.batch_size,
+            dynamic=True,
+            global_top_k=256,
+            deterministic=True,
+        )
+        return generation_config
+
+    def generate_neuron_config(self):
+        continuous_batching_config = None
+        if self.config.batch_size > 1:
+            continuous_batching_config = ContinuousBatchingConfig(
+                batch_size_for_shared_caches=self.config.batch_size)
+
+        on_dev_sampling_config = None
+        if os.getenv("NEURON_ON_DEV_GENERATION") and os.getenv("NEURON_ON_DEV_GENERATION").lower() == 'true':
+            on_dev_sampling_config = copy.deepcopy(self.model_config.generation_config)
+
+        quant_config = None
+        if os.getenv("NEURON_QUANT") is not None and os.getenv("NEURON_QUANT").lower() == 'true':
+            quant_dtype = 's8'
+            dequant_dtype = 'bf16'
+            logging.info(f'Quantization is enabled. '
+                         f'quant_dtype: {quant_dtype}, '
+                         f'dequant_dtype: {dequant_dtype}')
+            quant_config = QuantizationConfig(
+                quant_dtype=quant_dtype,
+                dequant_dtype=dequant_dtype
+            )
+
+        weight_tiling = True
+        qkv_tiling = True
+        fuse_mlp = False
+        mlp_out_weight_transpose = False
+
+        if os.getenv("NEURON_MULTI_NODE") is not None and os.getenv("NEURON_MULTI_NODE").lower() == "true":
+            weight_tiling = False
+            qkv_tiling = False
+            fuse_mlp = True
+            mlp_out_weight_transpose = True
+
+        if self.config.speculative_model:
+            weight_tiling = False
+            qkv_tiling = False
+            fuse_mlp = False
+            mlp_out_weight_transpose = False
+
+        neuron_config = NeuronConfig(
+            continuous_batching=continuous_batching_config,
+            attention_layout="BSH",
+            on_device_embedding=self.config.neuron_on_device_embedding,
+            on_device_generation=on_dev_sampling_config,
+            collectives_layout="BSH",
+            quant=quant_config,
+            fuse_qkv=True,
+            compilation_worker_count=self.config.compilation_worker_count,
+            sequence_parallel_norm=self.config.sequence_parallel,
+            sequence_parallel_norm_threshold=1,
+            shard_over_sequence=self.config.neuron_shard_over_sequence,
+            weight_tiling=weight_tiling,
+            qkv_tiling=qkv_tiling,
+            fuse_mlp=fuse_mlp,
+            mlp_out_weight_transpose=mlp_out_weight_transpose,
+        )
+        return neuron_config
 
     def load_model(self, **kwargs):
-        # TODO TNX: Determine whether partition is required or not
-
-        # Compile only if necessary
-        logging.info(f"LLM sharding and compiling for NxD started...")
-        # self.compiled_graph_path = os.path.join(self.get_load_path(),
-        #                                         "compiled")
-        #
-        # self.partition(self.compiled_graph_path, **kwargs)
-        # load the model
-        self.model = load_neuron_model(self.config.model_id_or_path)
-        return self.model
+        from vllm.model_executor.model_loader.neuron import get_neuron_sd_model
+        self.model = get_neuron_sd_model(model_name=self.config.model_id_or_path,
+                                         tensor_parallel_degree=self.config.tensor_parallel_degree,
+                                         speculative_draft_model=self.config.speculative_draft_model,
+                                         num_speculative_tokens=self.config.speculative_length,
+                                         max_num_seqs=self.config.batch_size,
+                                         max_model_len=self.config.n_positions)
 
     def partition(self, save_path, **kwargs):
-        logging.info("Compiling model to NeuronX Distributed format")
-
-        # TODO: change max_prompt_length and sequence_length
-        # TODO: Figure out what are the other kwargs
-        trace(
-            traced_model_path=save_path,
-            model_path=self.config.model_id_or_path,
-            hf_config=None,
-            tokenizer=None,
-            neuron_config=None,
-            tp_degree=self.config.tensor_parallel_degree,
-            batch_size=self.config.max_rolling_batch_size,
-            max_prompt_length=self.config.n_positions//2,
-            sequence_length=self.config.n_positions,
-            enable_bucketing=True,
-            **kwargs
-        )
+        pass

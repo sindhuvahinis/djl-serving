@@ -25,7 +25,7 @@ from djl_python.streaming_utils import StreamingUtils
 from djl_python.properties_manager.tnx_properties import TransformerNeuronXProperties, TnXGenerationStrategy, \
     TnXModelLoaders
 from djl_python.properties_manager.properties import StreamingEnum, is_rolling_batch_enabled
-from djl_python.neuron_utils.model_loader import TNXModelLoader, OptimumModelLoader, NxDModelLoader
+from djl_python.neuron_utils.model_loader import TNXModelLoader, OptimumModelLoader, NxDModelLoader, TNXVllmModelLoader
 from djl_python.neuron_utils.utils import task_from_config, build_vllm_rb_properties
 from djl_python.utils import rolling_batch_inference, get_input_details
 from djl_python.input_parser import parse_input_with_formatter
@@ -118,8 +118,12 @@ class TransformersNeuronXService(object):
             None
         """
         if self.config.model_loader == "tnx":
-            self._model_loader_class = TNXModelLoader
-            logging.info("Loading model using TNXModelLoader...")
+            if self.config.speculative_model:
+                self._model_loader_class = TNXVllmModelLoader()
+                logging.info("Loading model using TNXVllmModelLoader for speculative decoding...")
+            else:
+                self._model_loader_class = TNXModelLoader
+                logging.info("Loading model using TNXModelLoader...")
             return
 
         if self.config.model_loader == "optimum":
@@ -291,7 +295,9 @@ class TransformersNeuronXService(object):
         Returns:
             None
         """
-        if properties.get("speculative_draft_model"):
+        rolling_batch = properties.pop("rolling_batch", None)
+        is_vllm = rolling_batch and rolling_batch == "vllm"
+        if properties.get("speculative_draft_model") and not is_vllm:
             logging.info(
                 f"Loading draft model {properties.get('speculative_draft_model')} ..."
             )
@@ -316,38 +322,17 @@ class TransformersNeuronXService(object):
         Returns:
             None
         """
-
-        logging.info(f"SINDHU Setting env")
-        if os.getenv("NEURON_CC_PIPELINE_FACTOR") is not None:
-            try:
-                neuron_cc_pipeline_factor = int(os.getenv("NEURON_CC_PIPELINE_FACTOR"))
-                page_size = int(os.getenv("NEURON_CC_PAGE_SIZE", 2048))
-                os.environ["NEURON_SCRATCHPAD_PAGE_SIZE"] = str(page_size)
-                os.environ["NEURON_RT_DBG_EMBEDDING_UPDATE_BOUND_CHECK"] = "0"
-                os.environ["NEURON_RT_DBG_INDIRECT_MEMCPY_BOUND_CHECK"] = "0"
-                os.environ[
-                    "NEURON_CC_FLAGS"] = f"--internal-backend-options=--enable-indirect-memcpy-bound-check=false --tensorizer-options='--enable-ccop-compute-overlap --cc-pipeline-tiling-factor={neuron_cc_pipeline_factor}'  --hbm-scratchpad-page-size={page_size} --internal-repeat-load-thres=2"
-                logging.info(f"Enabling CC Pipelining with {os.getenv('NEURON_CC_FLAGS')} and page size {page_size}")
-            except ValueError as e:
-                logging.info(f"Failed to parse cc pipeline factor/page size: {e}")
-
-        logging.info(f"SINDHU:Loading model using spec dec")
-        from vllm.model_executor.model_loader.neuron import get_neuron_sd_model
-        self.model = get_neuron_sd_model(model_name=self.config.model_id_or_path,
-                                         tensor_parallel_degree=self.config.tensor_parallel_degree,
-                                         speculative_draft_model=self.config.speculative_draft_model,
-                                         num_speculative_tokens=self.config.speculative_length,
-                                         max_num_seqs=self.config.batch_size,
-                                         max_model_len=self.config.n_positions)
-        # if self.config.rolling_batch == "vllm" and self.config.model_loader == "vllm":
-        #     """Model loading is being deferred to vLLMs model loader"""
-        #     return
-        # elif self.config.model_loader == "nxd":
-        #     self.model = self.model_loader.load_model()
-        # elif self.config.rolling_batch == "vllm":
-        #     self.model = self.model_loader.load_unwrapped_model()
-        # else:
-        #     self.model = self.model_loader.load_model()
+        if self.config.rolling_batch == "vllm" and self.config.model_loader == "vllm":
+            if self.config.speculative_model:
+                self.model = self.model_loader.load_model()
+            """Model loading is being deferred to vLLMs model loader"""
+            return
+        elif self.config.model_loader == "nxd":
+            self.model = self.model_loader.load_model()
+        elif self.config.rolling_batch == "vllm":
+            self.model = self.model_loader.load_unwrapped_model()
+        else:
+            self.model = self.model_loader.load_model()
 
     def initialize_draft_model(self, properties: dict) -> None:
         """
@@ -393,10 +378,10 @@ class TransformersNeuronXService(object):
         Returns:
             None
         """
-        # self.pre_model_load(properties)
+        self.pre_model_load(properties)
         self.set_configs(properties)
         self.set_tokenizer()
-        # self.set_model_loader()
+        self.set_model_loader()
         self.load_model()
         self.set_rolling_batch(properties)
         self.input_format_args = self.get_input_format_args()

@@ -15,7 +15,7 @@ import logging
 import os
 import re
 import json
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Union
 
 from pydantic import field_validator, model_validator, ValidationInfo, Field
 from enum import IntEnum, Enum
@@ -83,8 +83,12 @@ TNX_SUPPORTED_ROLLING_BATCH_TYPES = [
 ]
 
 
-def get_env_or_default(key: str, default: Any = None) -> Any:
-    return os.environ.get(key, default)
+def get_env_or_default(key: str, default: Union[int, bool] = None, convert_type: type = None) -> Any:
+    value = os.environ.get(key, default)
+    if convert_type:
+        return convert_type(value)
+    else:
+        return value
 
 
 class TransformerNeuronXProperties(Properties):
@@ -124,18 +128,18 @@ class TransformerNeuronXProperties(Properties):
 
     # neuron vllm related configs
     neuron_on_dev_generation: Optional[bool] = Field(
-        default_factory=lambda: get_env_or_default("NEURON_ON_DEV_GENERATION", False))
+        default_factory=lambda: get_env_or_default("NEURON_ON_DEV_GENERATION", False, convert_type=bool))
     neuron_on_device_embedding: Optional[bool] = Field(
-        default_factory=lambda: get_env_or_default("NEURON_ON_DEVICE_EMBEDDING", False))
+        default_factory=lambda: get_env_or_default("NEURON_ON_DEVICE_EMBEDDING", False, convert_type=bool))
     neuron_shard_over_sequence: Optional[bool] = Field(
-        default_factory=lambda: get_env_or_default("NEURON_SHARD_OVER_SEQUENCE", False))
+        default_factory=lambda: get_env_or_default("NEURON_SHARD_OVER_SEQUENCE", False, convert_type=bool))
     neuron_compilation_worker_count: Optional[int] = Field(
-        default_factory=lambda: get_env_or_default("NEURON_COMPILATION_WORKER_COUNT"))
+        default_factory=lambda: get_env_or_default("NEURON_COMPILATION_WORKER_COUNT", convert_type=int))
     neuron_sequence_parallel: Optional[bool] = Field(
-        default_factory=lambda: get_env_or_default("NEURON_SEQUENCE_PARALLEL", True))
-    neuron_quant: Optional[bool] = Field(default_factory=lambda: get_env_or_default("NEURON_QUANT", False))
+        default_factory=lambda: get_env_or_default("NEURON_SEQUENCE_PARALLEL", True, bool))
+    neuron_quant: Optional[bool] = Field(default_factory=lambda: get_env_or_default("NEURON_QUANT", False, bool))
     neuron_cc_pipeline_factor: Optional[int] = Field(
-        default_factory=lambda: get_env_or_default("NEURON_CC_PIPELINE_FACTOR"))
+        default_factory=lambda: get_env_or_default("NEURON_CC_PIPELINE_FACTOR", convert_type=int))
 
     @field_validator('neuron_optimize_level')
     def set_neuron_optimal_env(cls, level):

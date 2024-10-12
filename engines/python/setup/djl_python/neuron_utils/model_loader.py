@@ -792,12 +792,12 @@ class TNXVllmModelLoader(ModelLoader):
         self.neuron_config = self.generate_neuron_config()
 
     def generate_generation_config(self):
-        generation_config = GenerationConfig(
+        generation_config = NeuronGenerationConfig(
             max_length=self.config.max_model_len,
+            do_sample=True,
             per_batch_line=True,
             top_k=[1] * self.config.batch_size,
             top_p=[1] * self.config.batch_size,
-            top_p_min_tokens=[1] * self.config.batch_size,
             temperature=[1] * self.config.batch_size,
             dynamic=True,
             global_top_k=256,
@@ -852,8 +852,8 @@ class TNXVllmModelLoader(ModelLoader):
             collectives_layout="BSH",
             quant=quant_config,
             fuse_qkv=True,
-            compilation_worker_count=self.config.compilation_worker_count,
-            sequence_parallel_norm=self.config.sequence_parallel,
+            compilation_worker_count=self.config.neuron_compilation_worker_count,
+            sequence_parallel_norm=self.config.neuron_sequence_parallel,
             sequence_parallel_norm_threshold=1,
             shard_over_sequence=self.config.neuron_shard_over_sequence,
             weight_tiling=weight_tiling,

@@ -85,7 +85,7 @@ TNX_SUPPORTED_ROLLING_BATCH_TYPES = [
 
 def get_env_or_default(key: str, default: Union[int, bool] = None, convert_type: type = None) -> Any:
     value = os.environ.get(key, default)
-    if convert_type:
+    if convert_type and value:
         return convert_type(value)
     else:
         return value
@@ -102,8 +102,7 @@ class TransformerNeuronXProperties(Properties):
     load_in_8bit: Optional[bool] = None
     low_cpu_mem_usage: bool = False
     load_split_model: Optional[bool] = None
-    context_length_estimate: Optional[List[int]] = Field(
-        default_factory=lambda: get_env_or_default("NEURON_CONTEXT_LENGTH_ESTIMATE"))
+    context_length_estimate: Optional[List[int]] = None
     amp: Optional[str] = None
     quantize: Optional[TnXQuantizeMethods] = None
     compiled_graph_path: Optional[str] = None

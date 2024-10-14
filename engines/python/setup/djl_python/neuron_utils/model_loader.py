@@ -796,9 +796,9 @@ class TNXVllmModelLoader(ModelLoader):
             max_length=self.config.max_model_len,
             do_sample=True,
             per_batch_line=True,
-            top_k=[1] * self.config.batch_size,
-            top_p=[1] * self.config.batch_size,
-            temperature=[1] * self.config.batch_size,
+            top_k=[1] * self.config.max_rolling_batch_size,
+            top_p=[1] * self.config.max_rolling_batch_size,
+            temperature=[1] * self.config.max_rolling_batch_size,
             dynamic=True,
             global_top_k=256,
             deterministic=True,
@@ -868,7 +868,6 @@ class TNXVllmModelLoader(ModelLoader):
         logging.info(f'neuron_config.continuous_batching_config: {neuron_config.continuous_batching}')
         logging.info(f'neuron_config.neuron_cc_pipeline_factor: {self.config.neuron_cc_pipeline_factor}')
         logging.info(f'batch_size: {self.config.max_rolling_batch_size}')
-        logging.info(f"model_config: {self.model_config}")
         return neuron_config
 
     def load_model(self, **kwargs):

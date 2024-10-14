@@ -807,16 +807,16 @@ class TNXVllmModelLoader(ModelLoader):
 
     def generate_neuron_config(self):
         continuous_batching_config = None
-        if self.config.batch_size > 1:
+        if self.config.max_rolling_batch_size > 1:
             continuous_batching_config = ContinuousBatchingConfig(
-                batch_size_for_shared_caches=self.config.batch_size)
+                batch_size_for_shared_caches=self.config.max_rolling_batch_size)
 
         on_dev_sampling_config = None
-        if os.getenv("NEURON_ON_DEV_GENERATION") and os.getenv("NEURON_ON_DEV_GENERATION").lower() == 'true':
+        if self.config.neuron_on_dev_generation:
             on_dev_sampling_config = copy.deepcopy(self.model_config.generation_config)
 
         quant_config = None
-        if os.getenv("NEURON_QUANT") is not None and os.getenv("NEURON_QUANT").lower() == 'true':
+        if self.config.neuron_quant:
             quant_dtype = 's8'
             dequant_dtype = 'bf16'
             logging.info(f'Quantization is enabled. '
@@ -862,20 +862,29 @@ class TNXVllmModelLoader(ModelLoader):
             mlp_out_weight_transpose=mlp_out_weight_transpose,
         )
         logging.info(f'Neuron config: {neuron_config}')
+        logging.info(f'neuron_config.on_device_embedding: {neuron_config.on_device_embedding}')
+        logging.info(f'neuron_config.on_device_generation: {neuron_config.on_device_generation}')
+        logging.info(f'neuron_config.shard_over_sequence: {neuron_config.shard_over_sequence}')
+        logging.info(f'neuron_config.continuous_batching_config: {neuron_config.continuous_batching}')
+        logging.info(f'neuron_config.neuron_cc_pipeline_factor: {self.config.neuron_cc_pipeline_factor}')
+        logging.info(f'batch_size: {self.config.max_rolling_batch_size}')
+        logging.info(f"model_config: {self.model_config}")
         return neuron_config
 
     def load_model(self, **kwargs):
         from vllm.model_executor.model_loader.neuron import get_neuron_sd_model
+        logging.info(f'context_length_estimate: {self.config.context_length_estimate}')
+        logging.info(f"Amp {self.config.amp}")
         if self.config.context_length_estimate is None:
             self.config.context_length_estimate = [128, 256, 384, 512, 640, 768, 1024, 1280, 1536, 2048, 3072,
                                                    4096, 6144, 8192, 12288, 16384, 32768]
         self.model = get_neuron_sd_model(model_name=self.config.model_id_or_path,
                                          tensor_parallel_degree=self.config.tensor_parallel_degree,
-                                         model_config=self.config,
+                                         model_config=self.model_config,
                                          neuron_config=self.neuron_config,
                                          speculative_draft_model=self.config.speculative_draft_model,
                                          num_speculative_tokens=self.config.speculative_length,
-                                         max_num_seqs=self.config.batch_size,
+                                         max_num_seqs=self.config.max_rolling_batch_size,
                                          max_model_len=self.config.n_positions,
                                          predefined_buckets=self.config.context_length_estimate,
                                          dtype=self.config.amp,

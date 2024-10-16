@@ -887,8 +887,10 @@ class TNXVllmModelLoader(ModelLoader):
                                          max_model_len=self.config.n_positions,
                                          predefined_buckets=self.config.context_length_estimate,
                                          dtype=self.config.amp,
-                                         neuron_cc_pipeline_factor=self.config.neuron_cc_pipeline_factor)
+                                         neuron_cc_pipeline_factor=self.config.neuron_cc_pipeline_factor,
+                                         download_dir=kwargs.get('download_dir'))
         return self.model
 
     def partition(self, save_path, **kwargs):
-        pass
+        kwargs['download_dir'] = save_path
+        self.load_model(**kwargs)

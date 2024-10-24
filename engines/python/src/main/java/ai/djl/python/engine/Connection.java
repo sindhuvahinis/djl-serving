@@ -212,11 +212,7 @@ class Connection {
         } else if (pyEnv.isMpiMode()) {
             String cudaDevices = getVisibleDevices(workerId, tensorParallelDegree);
             logger.info("Set CUDA_VISIBLE_DEVICES={}", cudaDevices);
-<<<<<<< Updated upstream
-            String[] args = new String[42];
-=======
-            String[] args = new String[48];
->>>>>>> Stashed changes
+            String[] args = new String[44];
             args[0] = "mpirun";
             args[1] = "-np";
             args[2] = String.valueOf(tensorParallelDegree);
@@ -244,23 +240,6 @@ class Connection {
             args[24] = "-x";
             args[25] = "MASTER_ADDR=" + pyEnv.getMasterAddr();
             args[26] = "-x";
-<<<<<<< Updated upstream
-            args[27] = "MKL_DYNAMIC=FALSE";
-            args[28] = pyEnv.getPythonExecutable();
-            args[29] = PyEnv.getEngineCacheDir() + "/djl_python_engine.py";
-            args[30] = "--model-dir";
-            args[31] = model.getModelPath().toAbsolutePath().toString();
-            args[32] = "--entry-point";
-            args[33] = entryPoint == null ? "" : entryPoint;
-            args[34] = "--sock-type";
-            args[35] = "unix";
-            args[36] = "--sock-name";
-            args[37] = getSocketPath(port);
-            args[38] = "--tensor-parallel-degree";
-            args[39] = String.valueOf(tensorParallelDegree);
-            args[40] = "--recommended-entry-point";
-            args[41] = recommendedEntryPoint == null ? "" : recommendedEntryPoint;
-=======
             args[27] = "MASTER_PORT=" + port;
             args[28] = "-x";
             args[29] = "MKL_DYNAMIC=FALSE";
@@ -276,13 +255,8 @@ class Connection {
             args[39] = getSocketPath(port);
             args[40] = "--tensor-parallel-degree";
             args[41] = String.valueOf(tensorParallelDegree);
-            args[42] = "--pipeline-parallel-degree";
-            args[43] = String.valueOf(pipelineParallelDegree);
-            args[44] = "--recommended-entry-point";
-            args[45] = recommendedEntryPoint == null ? "" : recommendedEntryPoint;
-            args[46] = "--log-level";
-            args[47] = pythonLogLevel;
->>>>>>> Stashed changes
+            args[42] = "--recommended-entry-point";
+            args[43] = recommendedEntryPoint == null ? "" : recommendedEntryPoint;
             return args;
         }
 

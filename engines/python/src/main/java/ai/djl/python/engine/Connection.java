@@ -220,7 +220,7 @@ class Connection {
             args[4] = "--bind-to";
             args[5] = "none";
             args[6] = "--map-by";
-            args[7] = "slot:pe-list=0-95";
+            args[7] = "core";
             args[8] = "--mca";
             args[9] = "btl_vader_single_copy_mechanism";
             args[10] = "none";

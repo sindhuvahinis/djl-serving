@@ -212,34 +212,39 @@ class Connection {
         } else if (pyEnv.isMpiMode()) {
             String cudaDevices = getVisibleDevices(workerId, tensorParallelDegree);
             logger.info("Set CUDA_VISIBLE_DEVICES={}", cudaDevices);
+<<<<<<< Updated upstream
             String[] args = new String[42];
+=======
+            String[] args = new String[48];
+>>>>>>> Stashed changes
             args[0] = "mpirun";
             args[1] = "-np";
             args[2] = String.valueOf(tensorParallelDegree);
             args[3] = "--allow-run-as-root";
             args[4] = "--bind-to";
             args[5] = "none";
-            args[6] = "--mca";
-            args[7] = "btl_vader_single_copy_mechanism";
-            args[8] = "none";
-            args[9] = "--tag-output";
-            args[10] = "-x";
-            args[11] = "FI_PROVIDER=efa";
+            args[6] = "--map-by";
+            args[7] = "slot:pe-list=0-95";
+            args[8] = "--mca";
+            args[9] = "btl_vader_single_copy_mechanism";
+            args[10] = "none";
+            args[11] = "--tag-output";
             args[12] = "-x";
-            args[13] = "RDMAV_FORK_SAFE=1";
+            args[13] = "FI_PROVIDER=efa";
             args[14] = "-x";
-            args[15] = "FI_EFA_USE_DEVICE_RDMA=1";
+            args[15] = "RDMAV_FORK_SAFE=1";
             args[16] = "-x";
-            args[17] = "LD_LIBRARY_PATH";
+            args[17] = "FI_EFA_USE_DEVICE_RDMA=1";
             args[18] = "-x";
-            args[19] = "PYTHONPATH";
+            args[19] = "LD_LIBRARY_PATH";
             args[20] = "-x";
-            args[21] = "CUDA_VISIBLE_DEVICES=" + cudaDevices;
+            args[21] = "PYTHONPATH";
             args[22] = "-x";
-            args[23] = "MASTER_ADDR=" + pyEnv.getMasterAddr();
+            args[23] = "CUDA_VISIBLE_DEVICES=" + cudaDevices;
             args[24] = "-x";
-            args[25] = "MASTER_PORT=" + port;
+            args[25] = "MASTER_ADDR=" + pyEnv.getMasterAddr();
             args[26] = "-x";
+<<<<<<< Updated upstream
             args[27] = "MKL_DYNAMIC=FALSE";
             args[28] = pyEnv.getPythonExecutable();
             args[29] = PyEnv.getEngineCacheDir() + "/djl_python_engine.py";
@@ -255,6 +260,29 @@ class Connection {
             args[39] = String.valueOf(tensorParallelDegree);
             args[40] = "--recommended-entry-point";
             args[41] = recommendedEntryPoint == null ? "" : recommendedEntryPoint;
+=======
+            args[27] = "MASTER_PORT=" + port;
+            args[28] = "-x";
+            args[29] = "MKL_DYNAMIC=FALSE";
+            args[30] = pyEnv.getPythonExecutable();
+            args[31] = PyEnv.getEngineCacheDir() + "/djl_python_engine.py";
+            args[32] = "--model-dir";
+            args[33] = model.getModelPath().toAbsolutePath().toString();
+            args[34] = "--entry-point";
+            args[35] = entryPoint == null ? "" : entryPoint;
+            args[36] = "--sock-type";
+            args[37] = "unix";
+            args[38] = "--sock-name";
+            args[39] = getSocketPath(port);
+            args[40] = "--tensor-parallel-degree";
+            args[41] = String.valueOf(tensorParallelDegree);
+            args[42] = "--pipeline-parallel-degree";
+            args[43] = String.valueOf(pipelineParallelDegree);
+            args[44] = "--recommended-entry-point";
+            args[45] = recommendedEntryPoint == null ? "" : recommendedEntryPoint;
+            args[46] = "--log-level";
+            args[47] = pythonLogLevel;
+>>>>>>> Stashed changes
             return args;
         }
 

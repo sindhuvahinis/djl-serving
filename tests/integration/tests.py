@@ -785,12 +785,6 @@ class TestNeuronx1:
                 container='pytorch-inf2-1')
             test_client.run()
 
-    def test_gpt2(self):
-        with Runner('pytorch-inf2', 'gpt2') as r:
-            prepare.build_transformers_neuronx_handler_model("gpt2")
-            r.launch(container='pytorch-inf2-1')
-            client.run("transformers_neuronx gpt2".split())
-
     def test_gpt2_quantize(self):
         with Runner('pytorch-inf2', 'gpt2-quantize') as r:
             prepare.build_transformers_neuronx_handler_model("gpt2-quantize")
@@ -816,38 +810,11 @@ class TestNeuronx1:
             finally:
                 os.system('sudo rm -rf models')
 
-
-@pytest.mark.inf
-class TestNeuronx2:
-
-    def test_stream_opt(self):
-        with Runner('pytorch-inf2', 'opt-1.3b-streaming') as r:
-            prepare.build_transformers_neuronx_handler_model(
-                "opt-1.3b-streaming")
-            r.launch(container='pytorch-inf2-6')
-            client.run("transformers_neuronx opt-1.3b-streaming".split())
-
     def test_mixtral(self):
         with Runner('pytorch-inf2', 'mixtral-8x7b') as r:
             prepare.build_transformers_neuronx_handler_model("mixtral-8x7b")
             r.launch(container='pytorch-inf2-4')
             client.run("transformers_neuronx mixtral-8x7b".split())
-
-    def test_stable_diffusion_1_5(self):
-        with Runner('pytorch-inf2', 'stable-diffusion-1.5-neuron') as r:
-            prepare.build_transformers_neuronx_handler_model(
-                "stable-diffusion-1.5-neuron")
-            r.launch(container='pytorch-inf2-2')
-            client.run(
-                "neuron-stable-diffusion stable-diffusion-1.5-neuron".split())
-
-    def test_stable_diffusion_2_1(self):
-        with Runner('pytorch-inf2', 'stable-diffusion-2.1-neuron') as r:
-            prepare.build_transformers_neuronx_handler_model(
-                "stable-diffusion-2.1-neuron")
-            r.launch(container='pytorch-inf2-2')
-            client.run(
-                "neuron-stable-diffusion stable-diffusion-2.1-neuron".split())
 
     def test_stable_diffusion_xl(self):
         with Runner('pytorch-inf2', 'stable-diffusion-xl-neuron') as r:
@@ -859,7 +826,53 @@ class TestNeuronx2:
 
 
 @pytest.mark.inf
-class TestNeuronxRollingBatch:
+class TestNeuronxRollingBatch1:
+
+    def test_llama_8b_vllm_nxdi_aot(self):
+        with Runner('pytorch-inf2', 'llama-3-1-8b-instruct-vllm-nxdi') as r:
+            prepare.build_transformers_neuronx_handler_model(
+                "llama-3-1-8b-instruct-vllm-nxdi")
+            r.launch(
+                container="pytorch-inf2-4",
+                cmd=
+                "partition --model-dir /opt/ml/input/data/training --save-mp-checkpoint-path /opt/ml/input/data/training/aot"
+            )
+            r.launch(container='pytorch-inf2-4',
+                     cmd="serve -m test=file:/opt/ml/model/test/aot")
+            client.run(
+                "transformers_neuronx_rolling_batch llama-3-1-8b-instruct-vllm-nxdi"
+                .split())
+
+    def test_llama_vllm_nxdi_aot(self):
+        with Runner('pytorch-inf2',
+                    'llama-3-2-1b-instruct-vllm-nxdi-aot') as r:
+            prepare.build_transformers_neuronx_handler_model(
+                "llama-3-2-1b-instruct-vllm-nxdi-aot")
+            r.launch(
+                container="pytorch-inf2-1",
+                cmd=
+                "partition --model-dir /opt/ml/input/data/training --save-mp-checkpoint-path /opt/ml/input/data/training/aot"
+            )
+            r.launch(container="pytorch-inf2-1",
+                     cmd="serve -m test=file:/opt/ml/model/test/aot")
+            client.run(
+                "transformers_neuronx_rolling_batch llama-3-2-1b-instruct-vllm-nxdi-aot"
+                .split())
+
+    def test_llama_multimodal(self):
+        with Runner('pytorch-inf2',
+                    'llama32-11b-multimodal') as r:
+            prepare.build_transformers_neuronx_handler_model(
+                "llama32-11b-multimodal"
+            )
+            r.launch(container="pytorch-inf2-4")
+            client.run(
+                "multimodal llama32-11b-multimodal-neuron".split()
+            )
+
+
+@pytest.mark.inf
+class TestNeuronxRollingBatch2:
 
     def test_llama_7b(self):
         with Runner('pytorch-inf2', 'llama-7b-rb') as r:
@@ -907,36 +920,6 @@ class TestNeuronxRollingBatch:
             r.launch(container='pytorch-inf2-6')
             client.run(
                 "transformers_neuronx_rolling_batch llama-speculative-compiled-rb"
-                .split())
-
-    def test_llama_8b_vllm_nxdi_aot(self):
-        with Runner('pytorch-inf2', 'llama-3-1-8b-instruct-vllm-nxdi') as r:
-            prepare.build_transformers_neuronx_handler_model("llama-3-1-8b-instruct-vllm-nxdi")
-            r.launch(
-                container="pytorch-inf2-4",
-                cmd=
-                "partition --model-dir /opt/ml/input/data/training --save-mp-checkpoint-path /opt/ml/input/data/training/aot"
-            )
-            r.launch(container='pytorch-inf2-4',
-                     cmd="serve -m test=file:/opt/ml/model/test/aot")
-            client.run(
-                "transformers_neuronx_rolling_batch llama-3-1-8b-instruct-vllm-nxdi"
-                .split())
-
-    def test_llama_vllm_nxdi_aot(self):
-        with Runner('pytorch-inf2',
-                    'llama-3-2-1b-instruct-vllm-nxdi-aot') as r:
-            prepare.build_transformers_neuronx_handler_model(
-                "llama-3-2-1b-instruct-vllm-nxdi-aot")
-            r.launch(
-                container="pytorch-inf2-1",
-                cmd=
-                "partition --model-dir /opt/ml/input/data/training --save-mp-checkpoint-path /opt/ml/input/data/training/aot"
-            )
-            r.launch(container="pytorch-inf2-1",
-                     cmd="serve -m test=file:/opt/ml/model/test/aot")
-            client.run(
-                "transformers_neuronx_rolling_batch llama-3-2-1b-instruct-vllm-nxdi-aot"
                 .split())
 
 

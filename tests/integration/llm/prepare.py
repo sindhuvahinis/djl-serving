@@ -289,7 +289,23 @@ transformers_neuronx_handler_list = {
         },
         "option.n_positions": 128,
         "option.max_rolling_batch_size": 1,
-    }
+    },
+    "llama32-11b-multimodal": {
+        "option.model_id": "s3://djl-llm/llama-3-2-11b-vision-instruct/",
+        "option.tensor_parallel_degree": 8,
+        "option.rolling_batch": "vllm",
+        "option.model_loader": "nxdi",
+        "option.n_positions": 2048,
+        "option.max_rolling_batch_size": 4,
+        "option.override_neuron_config": {
+            "on_device_sampling_config": {
+                "global_topk": 64,
+                "dynamic": True,
+                "deterministic": False
+            }
+        },
+        "option.model_loading_timeout": 1200,
+    },
 }
 
 rolling_batch_model_list = {

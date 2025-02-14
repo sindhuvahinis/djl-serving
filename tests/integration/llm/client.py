@@ -916,6 +916,9 @@ multi_modal_spec = {
     "llama32-11b-multimodal": {
         "batch_size": [1],
     },
+    "llama32-11b-multimodal-neuron": {
+        "batch_size": [1, 4],
+    }
 }
 
 text_embedding_model_spec = {
